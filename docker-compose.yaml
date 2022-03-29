@@ -1,0 +1,97 @@
+version: '3.7'
+volumes:
+    DataBase_datatarik: {}
+    
+    
+
+
+    
+networks:
+    networksApptarik: 
+        driver: bridge
+
+services:
+
+    php8tarik:
+        container_name: php8tarik
+        build:
+            context: .
+            dockerfile: docker/php8
+        ports:
+            - "9001:80"
+        restart: always  
+        command: 
+            - "apache2-foreground"
+        volumes:
+            - ./docker/vhosts/vhostsApache.conf:/etc/apache2/sites-enabled/000-default.conf
+            #- ./docker/php.ini:/usr/local/etc/php/php.ini
+            #- ./docker/docker-xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+            - ./:/var/www/html
+        networks:
+            - networksApptarik
+
+
+    mailertarik:
+        image: schickling/mailcatcher
+        container_name: mailcatchertarik
+        restart: always
+        ports: [ 1025, 1080 ]
+        depends_on:
+            - php8tarik
+        networks:
+            - networksApptarik
+    maildevtarik:
+        image: maildev/maildev
+        container_name: maildevdockertarik
+        command: bin/maildev --web 80 --smtp 25 --hide-extensions STARTTLS
+        depends_on:
+            - php8tarik
+        ports:
+            - "9025:80"
+        restart: always
+        networks:
+            - networksApptarik
+
+    DataBase_dockertarik:
+        image: mariadb:10.3
+        container_name: DataBase_dockertarik
+        restart: always
+        environment:
+            MARIADB_USER: root
+            MARIADB_PASSWORD: root
+            MARIADB_ROOT_PASSWORD: root
+            MYSQL_DATABASE: db
+        volumes:
+            - DataBase_datatarik:/var/lib/mysql
+            #- ./mariadb/my.cnf:/etc/mysql/conf.d/my.cnf
+        depends_on:
+            - php8tarik
+        networks:
+            - networksApptarik
+    adminertarik:
+        image: adminer
+        container_name: adminertarik
+        links:
+            - DataBase_dockertarik:DataBase_dockertarik
+        restart: always
+        ports:
+            - 9002:8080
+        depends_on:
+            - DataBase_dockertarik
+        networks:
+            - networksApptarik
+    phpmyadmintarik:
+        image: phpmyadmin
+        container_name: phpmyadmintark
+        restart: always
+        links:
+            - DataBase_dockertarik:DataBase_dockertarik
+        ports:
+            - 9003:80
+        environment:
+            - PMA_ARBITRARY=1
+        depends_on:
+            - DataBase_dockertarik
+        networks:
+            - networksApptarik
+
